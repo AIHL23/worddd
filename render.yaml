@@ -1,0 +1,33 @@
+services:
+  # Backend Service
+  - type: web
+    name: okulproje-backend
+    env: node
+    root: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: MONGODB_URI
+        sync: false
+      - key: HUGGINGFACE_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+
+  # Frontend Service
+  - type: web
+    name: okulproje-frontend
+    env: static
+    root: frontend
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: REACT_APP_API_URL
+        fromService:
+          type: web
+          name: okulproje-backend
+          property: url

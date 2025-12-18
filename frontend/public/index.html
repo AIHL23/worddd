@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WordMaster - Öğrenci Kelime Platformu</title>
+    <script>
+        // API URL configuration - will be replaced during build with REACT_APP_API_URL env var
+        window.API_URL = "%REACT_APP_API_URL%";
+        // Fallback if env var is not set or still a placeholder (e.g., during local dev)
+        if (!window.API_URL || window.API_URL.startsWith("%") || window.API_URL === "undefined") {
+            window.API_URL = "http://localhost:5000";
+        }
+        // Remove trailing slash to prevent double slashes in API calls
+        window.API_URL = window.API_URL.replace(/\/$/, '');
+    </script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Dil Seçimi Stilleri */
+        .language-selection {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .language-options {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .lang-option {
+            flex: 1;
+            padding: 12px 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .lang-option:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+
+        .lang-option.active {
+            border-color: #2ecc71;
+            background: #2ecc71;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+        }
+
+        .points-preview {
+            text-align: center;
+            margin-top: 8px;
+            font-weight: 500;
+            color: #27ae60;
+        }
+
+        /* Modal içi responsive düzen */
+        @media (max-width: 768px) {
+            .language-options {
+                flex-direction: column;
+            }
+            
+            .lang-option {
+                padding: 10px;
+            }
+        }
+
+        /* Animasyonlar */
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-30px);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% {
+                transform: translateX(0) rotate(0deg);
+            }
+            25% {
+                transform: translateX(-10px) rotate(-5deg);
+            }
+            50% {
+                transform: translateX(10px) rotate(5deg);
+            }
+            75% {
+                transform: translateX(-10px) rotate(-5deg);
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <!-- Login Ekranı -->
+        <div id="loginPage" class="page active">
+            <div class="login-page-layout">
+                <div class="login-form-section">
+                    <div class="login-card">
+                        <div class="logo">
+                            <img src="assets/logo.png" alt="Logo" class="logo-image" style="height: 130px; margin-bottom: 15px;">
+                            <h1>WordMaster</h1>
+                            <p>Kelime Öğrenme Platformu</p>
+                            <p class="school-name">🏫 Elazığ Merkez Anadolu İmam Hatip</p>
+                        </div>
+                        
+                        <form id="loginForm" class="auth-form">
+                            <div class="input-group">
+                                <div class="input-icon">🎓</div>
+                                <input type="text" id="studentId" placeholder="Öğrenci Numaranız" required>
+                            </div>
+                            
+                            <div class="input-group">
+                                <div class="input-icon">🔒</div>
+                                <input type="password" id="password" placeholder="Şifreniz" required>
+                            </div>
+                            
+                            <button type="submit" class="btn-primary">
+                                <span class="btn-icon">🚀</span>
+                                Giriş Yap
+                            </button>
+                        </form>
+                        
+                        <div id="message" class="message"></div>
+                    </div>
+                </div>
+                
+                <!-- Login Help Button -->
+                <div class="login-help-container" onclick="openInfoModal()">
+                    <div class="login-help-btn">?</div>
+                    <span class="login-help-text">Ne işe yarıyor?</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Şifre Değiştirme -->
+        <div id="changePasswordPage" class="page">
+            <div class="login-container">
+                <div class="logo">
+                    <div class="logo-icon">🔐</div>
+                    <h2>Şifre Değiştir</h2>
+                    <p>İlk girişte şifrenizi güncelleyin</p>
+                </div>
+                
+                <form id="changePasswordForm" class="auth-form">
+                    <div class="input-group">
+                        <div class="input-icon">🆕</div>
+                        <input type="password" id="newPassword" placeholder="Yeni Şifre (min 6 karakter)" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <div class="input-icon">🔁</div>
+                        <input type="password" id="confirmPassword" placeholder="Şifre Tekrar" required>
+                    </div>
+
+                    <div class="kvkk-consent-group">
+                        <div class="kvkk-consent-header">
+                            <label class="kvkk-checkbox-label">
+                                <input type="checkbox" id="kvkkConsent" required>
+                                <span>KVKK Onayı</span>
+                            </label>
+                            <button type="button" class="kvkk-help-btn" onclick="openKVKKModal()" title="KVKK Metnini Oku">?</button>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">
+                        <span class="btn-icon">💾</span>
+                        Şifreyi Kaydet
+                    </button>
+                </form>
+                
+                <div id="passwordMessage" class="message"></div>
+            </div>
+        </div>
+
+        <!-- KVKK Onay Modali -->
+        <div id="kvkkModal" class="kvkk-modal">
+            <div class="kvkk-modal-content">
+                <div class="kvkk-modal-header">
+                    <h2>KVKK - Kişisel Verilerin Korunması</h2>
+                    <button type="button" class="kvkk-modal-close" onclick="closeKVKKModal()">✕</button>
+                </div>
+                <div class="kvkk-modal-body">
+                    <p>6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında, bu site üzerinden tarafıma ait kişisel verilerin; üyelik işlemlerinin yürütülmesi, hizmetlerin sağlanması, sistem güvenliğinin temini ve kullanıcı deneyiminin geliştirilmesi amaçlarıyla işlenmesine açık rıza gösteriyorum.</p>
+                    <p>Kişisel verilerimin, kanuni yükümlülükler veya yetkili merciler haricinde üçüncü kişilere aktarılmayacağını; veri silme, düzeltme ve bilgi talep etme haklarımı her zaman kullanabileceğimi kabul ediyorum.</p>
+                    <p>Ayrıca, site hizmetlerinin kullanımında meydana gelebilecek teknik aksaklıklar, erişim problemleri, veri kayıpları, kesintiler veya benzeri durumlar nedeniyle site yönetiminin herhangi bir sorumluluk kabul etmediğini, hizmetlerin mevcut hâliyle sunulduğunu beyan ederim.</p>
+                </div>
+                <div class="kvkk-modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeKVKKModal()">Kapat</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ana Profil -->
+        <div id="profilePage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <div class="header-row-top">
+                        <div class="header-left">
+                            <div class="button-with-label">
+                                <button class="profile-btn" id="headerProfileBtn" onclick="showProfileInfoPage()" title="Profil Bilgileri">👤</button>
+                                <small class="button-label">Profil</small>
+                            </div>
+                        </div>
+                        <div class="header-center">
+                            <h1>WordMaster</h1>
+                        </div>
+                        <div class="header-right">
+                            <button class="btn-logout" onclick="logout()">Çıkış</button>
+                            <button class="btn-help-header" onclick="openInfoModal()" title="Ne işe yarıyor?">?</button>
+                        </div>
+                    </div>
+                    <div class="header-row-bottom">
+                        <div class="button-with-label">
+                            <button class="chat-ai-btn" onclick="openChatModal()" title="AI ile Sohbet Et">🤖</button>
+                            <small class="button-label">AI Sohbet</small>
+                        </div>
+                        <div class="button-with-label">
+                            <button class="feedback-btn" onclick="openFeedbackModal()" title="Geri Bildirim Gönder">💬</button>
+                            <small class="button-label">Geri Bildirim</small>
+                        </div>
+                        <div class="button-with-label">
+                            <button class="notification-btn" onclick="openNotificationsModal()" title="Bildirimler">
+                                🔔
+                                <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                            </button>
+                            <small class="button-label">Bildirimler</small>
+                        </div>
+                    </div>
+                </header>
+
+
+
+                <!-- DUYURULAR BÖLÜMÜ -->
+                <div id="announcementsSection" class="announcements-section" style="display: none;">
+                    <div class="section-header">
+                        <h3>📢 Duyurular</h3>
+                    </div>
+                    <div id="studentAnnouncementsList" class="student-announcements-list">
+                        <!-- Duyurular buraya gelecek -->
+                    </div>
+                </div>
+
+                <!-- Tab Sistemi -->
+                <div class="profile-tabs">
+                    <button class="tab-btn active" onclick="switchProfileTab('words')">📚 Kelime İşlemleri</button>
+                    <button class="tab-btn" onclick="switchProfileTab('games')">🎮 Oyunlar</button>
+                </div>
+
+                <!-- TAB 2: KELİME İŞLEMLERİ -->
+                <div id="profileTab-words" class="profile-tab-content active">
+                    <div class="words-management-grid">
+                        <div class="word-management-card" onclick="showWordAddPage('turkish')">
+                            <div class="word-mgmt-icon">TR</div>
+                            <div class="card-content">
+                                <h3>Türkçe Kelime</h3>
+                                <p>Yeni kelime ekle</p>
+                                <span class="badge">+10 puan</span>
+                            </div>
+                        </div>
+                        
+                        <div class="word-management-card" onclick="showWordAddPage('english')">
+                            <div class="word-mgmt-icon">İNG</div>
+                            <div class="card-content">
+                                <h3>İngilizce Kelime</h3>
+                                <p>Yeni kelime ekle</p>
+                                <span class="badge">+25 puan</span>
+                            </div>
+                        </div>
+                        
+                        <div class="word-management-card" onclick="showWordAddPage('arabic')">
+                            <div class="word-mgmt-icon">ARP</div>
+                            <div class="card-content">
+                                <h3>Arapça Kelime</h3>
+                                <p>Yeni kelime ekle</p>
+                                <span class="badge">+50 puan</span>
+                            </div>
+                        </div>
+
+                        <!-- Admin Butonu - Kelime İşlemleri Sekmesi -->
+                        <div class="word-management-card admin-card" id="adminCardInWords" onclick="showAdminPage()">
+                            <div class="word-mgmt-icon">⚙️</div>
+                            <div class="card-content">
+                                <h3>Yönetici Paneli</h3>
+                                <p>Kelimeleri ve cümleleri onayla</p>
+                                <span class="badge">Admin</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="all-words-button-section">
+                        <p class="all-words-subtitle">Hızlı ilerlemek için tüm kelimelerinizi görüntüleyin!</p>
+                        <button class="btn-all-words" onclick="showAllWordsPage()">📚 Tüm Kelimeleri Görüntüle</button>
+                    </div>
+                </div>
+
+                <!-- TAB 3: OYUNLAR -->
+                <div id="profileTab-games" class="profile-tab-content">
+                    <div class="games-grid">
+                        <div class="game-card" onclick="showMatchingGame()">
+                            <div class="game-icon">🎯</div>
+                            <div class="card-content">
+                                <h3>Eşleştirme</h3>
+                                <p>Kelimelerle anlamlarını eşleştir</p>
+                                <span class="badge">+10 puan/kelime</span>
+                            </div>
+                        </div>
+
+                        <div class="game-card" onclick="showQuizGame()">
+                            <div class="game-icon">❓</div>
+                            <div class="card-content">
+                                <h3>Quiz Oyunu</h3>
+                                <p>Çoktan seçmeli sorular çöz</p>
+                                <span class="badge">+5 puan</span>
+                            </div>
+                        </div>
+
+                        <div class="game-card" onclick="showFillBlankGame()">
+                            <div class="game-icon">📝</div>
+                            <div class="card-content">
+                                <h3>Boşluk Doldurma</h3>
+                                <p>Kelime ve anlamda boşlukları doldur</p>
+                                <span class="badge">+10 puan/soru</span>
+                            </div>
+                        </div>
+
+                        <!-- Admin Butonu - Oyunlar Sekmesi -->
+                        <div class="game-card admin-card" id="adminCardInGames" onclick="showAdminPage()">
+                            <div class="game-icon">⚙️</div>
+                            <div class="card-content">
+                                <h3>Yönetici Paneli</h3>
+                                <p>Kelimeleri ve cümleleri onayla</p>
+                                <span class="badge">Admin</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Puan Tablosu - Her iki tab altında görülecek -->
+                <div class="leaderboard-section">
+                    <div class="leaderboard-header">
+                        <h3>🏅 Puan Tablosu (Top 20)</h3>
+                        <button class="btn-secondary" onclick="loadLeaderboard()" title="Yenile">🔄</button>
+                    </div>
+                    <div id="leaderboardList" class="leaderboard-list">
+                        <p class="loading-text">Puan tablosu yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kelime Ekleme -->
+        <div id="wordAddPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <button class="btn-back" onclick="showProfilePage()">← Geri</button>
+                    <h1 id="wordAddTitle">🇹🇷 Türkçe Kelime Ekle</h1>
+                    <div class="header-placeholder"></div>
+                </header>
+
+                <div class="form-card">
+                    <form id="wordAddForm">
+                        <div class="input-group">
+                            <label>📝 Kelime</label>
+                            <input type="text" id="wordInput" placeholder="Kelimeyi yazın..." required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>📖 Anlamı</label>
+                            <textarea id="wordMeaning" placeholder="Kelimenin anlamını açıklayın..." rows="4" required></textarea>
+                        </div>
+                        
+                        <div class="form-footer">
+                            <div class="points-info" id="wordAddPointsInfo">✅ Admin onayından sonra +10 puan</div>
+                            <button type="submit" class="btn-primary">
+                                <span class="btn-icon">📤</span>
+                                Kelimeyi Gönder
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="wordMessage" class="message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TÜM KELİMELER SAYFASI -->
+        <div id="allWordsPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <button class="btn-back" onclick="showProfilePage()">← Geri</button>
+                    <h1>📚 Tüm Kelimeler</h1>
+                    <div class="user-menu">
+                        <span class="user-points">🏆 <span id="allWordsPoints">0</span> puan</span>
+                    </div>
+                </header>
+
+                <div class="search-section">
+                    <div class="search-box">
+                        <div class="search-icon">🔍</div>
+                        <input type="text" id="searchWordsInput" placeholder="Kelimelerde ara... (örn: 'a' yazın)" onkeyup="searchWords()">
+                        <div class="search-stats">
+                            <span id="wordsCount">0</span> kelime
+                        </div>
+                    </div>
+                </div>
+
+                <div class="words-grid" id="wordsGrid">
+                    <div class="empty-state">
+                        <div class="empty-icon">📚</div>
+                        <h3>Henüz kelime eklenmemiş</h3>
+                        <p>İlk kelimeyi eklemek için yukarıdaki butonları kullanın</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- YÖNETİCİ PANELİ -->
+        <div id="adminPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <button class="btn-back" onclick="showProfilePage()">← Geri</button>
+                    <h1>⚙️ Yönetici Paneli</h1>
+                    <div class="user-menu">
+                        <span class="user-points">👤 <span id="adminName">Admin</span></span>
+                    </div>
+                </header>
+
+                <div class="admin-tabs">
+                    <button class="tab-btn active" onclick="showAdminTab('students')">👥 Öğrenciler</button>
+                    <button class="tab-btn" onclick="showAdminTab('words')">📝 Kelimeler</button>
+                    <button class="tab-btn" onclick="showAdminTab('sentences')">💬 Cümleler</button>
+                    <button class="tab-btn" onclick="showAdminTab('announcements')">📢 Duyurular</button>
+                    <button class="tab-btn" onclick="showAdminTab('statistics')">📊 İstatistikler</button>
+                    <button class="tab-btn" onclick="showAdminTab('ai')">🤖 AI Asistan</button>
+                    <button class="tab-btn" onclick="showAdminTab('feedback')">💬 Geri Bildirim</button>
+                    <button class="tab-btn" onclick="showAdminTab('logs')">📋 Loglar</button>
+                </div>
+
+                <!-- Öğrenci Yönetimi -->
+                <div id="adminStudentsTab" class="admin-tab active">
+                    <div class="admin-two-column">
+                        <div class="admin-section">
+                            <h2>➕ Yeni Öğrenci Ekle</h2>
+                            <form onsubmit="addStudentFromAdmin(); return false;" class="admin-form">
+                                <input type="text" id="adminStudentId" placeholder="Öğrenci Numarası" required>
+                                <input type="text" id="addStudentName" placeholder="Adı Soyadı" required>
+                                <input type="text" id="adminClass" placeholder="Sınıfı (örn: 9-A)" required>
+                                <input type="password" id="adminPassword" placeholder="Geçici Şifre" required>
+                                <button type="submit" class="btn-primary">➕ Öğrenci Ekle</button>
+                            </form>
+                            <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                                ℹ️ Eklenen öğrenci, ilk girişte şifresini değiştirmek zorunda olacaktır.
+                            </p>
+                        </div>
+
+                        <div class="admin-section">
+                            <h2>➕ Yeni Öğretmen Ekle</h2>
+                            <form onsubmit="addTeacherFromAdmin(); return false;" class="admin-form">
+                                <input type="text" id="adminTeacherId" placeholder="Öğretmen Numarası" required>
+                                <input type="text" id="addTeacherName" placeholder="Adı Soyadı" required>
+                                <input type="password" id="adminTeacherPassword" placeholder="Geçici Şifre" required>
+                                <button type="submit" class="btn-primary">➕ Öğretmen Ekle</button>
+                            </form>
+                            <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                                ℹ️ Eklenen öğretmen, ilk girişte şifresini değiştirmek zorunda olacaktır.
+                            </p>
+                        </div>
+
+                        <div class="admin-section">
+                            <h2>🚫 Öğrenci Yasakla</h2>
+                            <form onsubmit="banStudentFromAdmin(); return false;" class="admin-form">
+                                <input type="text" id="banStudentId" placeholder="Öğrenci Numarası" required>
+                                <textarea id="banReason" placeholder="Yasaklama Sebebi" rows="3"></textarea>
+                                <button type="submit" class="btn-danger">🚫 Yasakla</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h2>👥 Tüm Öğrenciler</h2>
+                        <button class="btn-danger" onclick="resetAllPoints()" style="margin-bottom: 15px; width: 100%;">🔄 TÜM PUANLARI SİL</button>
+                        <div id="adminStudentsList" class="admin-list">
+                            <p>Yükleniyor...</p>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h2>👨‍🏫 Tüm Öğretmenler</h2>
+                        <div id="adminTeachersList" class="admin-list">
+                            <p>Yükleniyor...</p>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h2>🚫 Yasaklı Öğrenciler</h2>
+                        <div id="adminBannedStudentsList" class="admin-list">
+                            <p>Yükleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onay Bekleyen Kelimeler -->
+                <div id="adminWordsTab" class="admin-tab">
+                    <h2>⏳ Onay Bekleyen Kelimeler</h2>
+                    <div id="pendingWordsList" class="admin-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">✅</div>
+                            <h3>Onay bekleyen kelime yok</h3>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h2 style="margin-top: 0;">📚 Tüm Onaylanmış Kelimeler</h2>
+                        
+                        <div class="search-section" style="margin-bottom: 20px;">
+                            <div class="search-box">
+                                <div class="search-icon">🔍</div>
+                                <input type="text" id="allWordsSearchInput" placeholder="Kelimelerde ara... (kelime adı veya anlam)" onkeyup="searchAllWords()">
+                                <div class="search-stats">
+                                    <span id="allWordsCount">0</span> kelime bulundu
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
+                            <div style="background: #f0f9ff; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; margin-bottom: 5px;">📝</div>
+                                <div style="font-size: 12px; color: #666;">Toplam Kelime</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #667eea;" id="totalApprovedWordsCount">0</div>
+                            </div>
+                            <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; margin-bottom: 5px;">🇹🇷</div>
+                                <div style="font-size: 12px; color: #666;">Türkçe</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #10b981;" id="turkishWordsCount">0</div>
+                            </div>
+                            <div style="background: #fef3c7; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; margin-bottom: 5px;">🇬🇧</div>
+                                <div style="font-size: 12px; color: #666;">İngilizce</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #f59e0b;" id="englishWordsCount">0</div>
+                            </div>
+                            <div style="background: #fce7f3; padding: 12px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 24px; margin-bottom: 5px;">🇸🇦</div>
+                                <div style="font-size: 12px; color: #666;">Arapça</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #ec4899;" id="arabicWordsCount">0</div>
+                            </div>
+                        </div>
+                        
+                        <div id="allApprovedWordsList" class="admin-list">
+                            <div class="empty-state">
+                                <div class="empty-icon">📚</div>
+                                <h3>Onaylanmış kelime yok</h3>
+                                <p>Kelimeler yükleniyor...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Onay Bekleyen Cümleler -->
+                <div id="adminSentencesTab" class="admin-tab">
+                    <h2>⏳ Onay Bekleyen Cümleler</h2>
+                    <div id="pendingSentencesList" class="admin-list">
+                        <div class="empty-state">
+                            <div class="empty-icon">✅</div>
+                            <h3>Onay bekleyen cümle yok</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DUYURU YÖNETİMİ -->
+                <div id="adminAnnouncementsTab" class="admin-tab">
+                    <h2>📢 Duyuru Yönetimi</h2>
+                    <div class="admin-two-column">
+                        <div class="admin-section">
+                            <h3>📝 Yeni Duyuru Oluştur</h3>
+                            <form onsubmit="createAnnouncement(); return false;" class="admin-form">
+                                <input type="text" id="announcementTitle" placeholder="Başlık" required>
+                                <textarea id="announcementContent" placeholder="İçerik" rows="4" required></textarea>
+                                <select id="announcementType">
+                                    <option value="info">ℹ️ Bilgi</option>
+                                    <option value="warning">⚠️ Uyarı</option>
+                                    <option value="success">✅ Başarı</option>
+                                    <option value="urgent">🚨 Acil</option>
+                                </select>
+                                <input type="number" id="announcementPriority" min="0" max="10" value="5" placeholder="Öncelik (0-10)">
+                                <button type="submit" class="btn-primary">📢 Duyuru Gönder</button>
+                            </form>
+                        </div>
+                        <div id="announcementsList" class="admin-section">
+                            <h3>📋 Son Duyurular</h3>
+                            <div id="announcementsListContent" class="admin-list">
+                                <p>Yükleniyor...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OYUN İSTATİSTİKLERİ -->
+                <div id="adminStatisticsTab" class="admin-tab">
+                    <h2>📊 Oyun İstatistikleri</h2>
+                    <div class="admin-stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-label">Toplam Oyuncu</span>
+                            <span class="stat-value" id="totalPlayers">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Toplam Oyun</span>
+                            <span class="stat-value" id="totalGames">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Flashcard</span>
+                            <span class="stat-value" id="flashcardGames">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Eşleştirme</span>
+                            <span class="stat-value" id="matchingGames">0</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Ort. Doğruluk</span>
+                            <span class="stat-value" id="averageAccuracy">0%</span>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 30px;">🏆 En Yüksek Puanlar (Bu Hafta)</h3>
+                    <div id="weeklyTopStudents" class="admin-list">
+                        <p>Yükleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- AI ASISTAN -->
+                <div id="adminAiTab" class="admin-tab">
+                    <h2>🤖 Admin AI Asistanı</h2>
+                    <div class="admin-section" style="max-width: 100%;">
+                        <p style="margin-bottom: 20px; color: #666;">
+                            💡 AI asistana komut vererek öğrenci yönetimi ve sistem işlemlerini yapabilirsiniz.
+                        </p>
+                        
+                        <div style="border: 2px solid #667eea; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; height: 500px; background: linear-gradient(135deg, #f9fafb 0%, #f0f4ff 100%); box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12);">
+                            <!-- Chat Messages -->
+                            <div id="adminAiChatBox" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+                                <div style="background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%); padding: 12px 14px; border-radius: 10px; text-align: center; color: #667eea; font-weight: 500; font-size: 13px; border: 1px solid rgba(102, 126, 234, 0.2);">
+                                    🤖 Merhaba! Size nasıl yardımcı olabilirim?
+                                </div>
+                            </div>
+                            
+                            <!-- Input Area -->
+                            <div style="border-top: 1px solid #e5e7eb; padding: 12px 14px; background: white;">
+                                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                    <input type="text" id="adminAiInput" placeholder="Komut yazın..." 
+                                           style="flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+                                    <button onclick="sendAdminAiMessage()" class="btn-primary" style="padding: 10px 18px; font-size: 13px;">Gönder</button>
+                                </div>
+                                <div style="font-size: 11px; color: #999;">
+                                    💡 Öğrenci listesi, Puan istatistik, En iyi öğrenciler vb.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Results -->
+                        <div id="adminAiResultsContainer" style="margin-top: 20px; display: none;">
+                            <h3>📊 Sonuç Verileri</h3>
+                            <div id="adminAiResults" style="background: #f5f5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea; overflow-x: auto;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GERİ BİLDİRİM YÖNETİMİ -->
+                <div id="adminFeedbackTab" class="admin-tab">
+                    <h2>💬 Geri Bildirim Yönetimi</h2>
+                    
+                    <div class="admin-section">
+                        <h3>🔍 Filtreleme</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <select id="feedbackStatusFilter" onchange="loadAdminFeedbacks()">
+                                <option value="">Tümü</option>
+                                <option value="pending">⏳ Cevap Bekleyen</option>
+                                <option value="answered">✅ Cevap Verildi</option>
+                                <option value="closed">🔒 Kapalı</option>
+                            </select>
+                            <button class="btn-secondary" onclick="loadAdminFeedbacks()">🔄 Yenile</button>
+                        </div>
+                    </div>
+                    
+                    <div id="adminFeedbacksList" class="admin-list">
+                        <p>Yükleniyor...</p>
+                    </div>
+                </div>
+
+                <!-- ADMIN LOG'LAR -->
+                <div id="adminLogsTab" class="admin-tab">
+                    <h2>📋 Admin Logları</h2>
+                    <div class="admin-section">
+                        <h3>🔍 Logu Filtrele</h3>
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <select id="logActionFilter" onchange="loadAdminLogs()">
+                                <option value="">Tüm İşlemler</option>
+                                <option value="word_approve">Kelime Onayı</option>
+                                <option value="word_reject">Kelime Reddi</option>
+                                <option value="sentence_approve">Cümle Onayı</option>
+                                <option value="user_ban">Öğrenci Banı</option>
+                                <option value="announcement_post">Duyuru Gönderimi</option>
+                                <option value="announcement_delete">Duyuru Silimi</option>
+                            </select>
+                            <button class="btn-secondary" onclick="loadAdminLogs()">🔄 Yenile</button>
+                        </div>
+                    </div>
+                    <div id="adminLogsList" class="admin-list">
+                        <p>Yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- EŞLEŞTIRME OYUNU SAYFASI -->
+        <div id="matchingPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <button class="btn-help" onclick="showMatchingTutorial()" title="Nasıl oynanır?">❓</button>
+                    <h1>🎯 Eşleştirme Oyunu</h1>
+                    <div class="header-game-stats">
+                        <button class="btn-back" onclick="showProfilePage()">← Geri</button>
+                        <div class="user-menu">
+                            <span class="user-points">🏆 <span id="matchingPoints">0</span> puan</span>
+                        </div>
+                        <div class="game-stats-header">
+                            <div class="stat-box-small">
+                                <span class="stat-label">⏱️ Süre:</span>
+                                <span class="stat-value" id="matchingTimer">40</span>
+                            </div>
+                            <div class="stat-box-small">
+                                <span class="stat-label">Eşleştirilen:</span>
+                                <span class="stat-value" id="matchingMatched">0</span>
+                            </div>
+                            <div class="stat-box-small">
+                                <span class="stat-label">Kalan:</span>
+                                <span class="stat-value" id="matchingRemaining">0</span>
+                            </div>
+                            <div class="stat-box-small">
+                                <span class="stat-label">Puanlar:</span>
+                                <span class="stat-value" id="matchingScore">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="game-container">
+
+                    <div class="matching-board" id="matchingBoard">
+                        <div class="empty-state">
+                            <div class="empty-icon">🎯</div>
+                            <h3>Kelime ekleyerek başlayın!</h3>
+                        </div>
+                    </div>
+
+                    <div class="game-controls">
+                        <button class="btn-primary" id="matchingFinishBtn" onclick="endMatchingGame()">✅ Bitir & Puanı Al</button>
+                    </div>
+
+                    <div id="matchingMessage"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MATCHING GAME TUTORIAL -->
+        <div id="matchingTutorial" class="tutorial-modal">
+            <div class="tutorial-content">
+                <div class="tutorial-header">
+                    <h2>🎯 Nasıl Oynanır?</h2>
+                    <button class="tutorial-close" onclick="closeMatchingTutorial()">✕</button>
+                </div>
+                
+                <div class="tutorial-step">
+                    <span class="tutorial-step-number">1</span>
+                    <div class="tutorial-step-title">Kelimeleri İncele</div>
+                    <div class="tutorial-step-desc">Solda Türkçe kelimeler, sağda da anlamları göreceksin. Hepsini dikkatli okuyup anlamlarını eşleştir.</div>
+                </div>
+                
+                <div class="tutorial-step">
+                    <span class="tutorial-step-number">2</span>
+                    <div class="tutorial-step-title">Kelime ve Anlamı Seç</div>
+                    <div class="tutorial-step-desc">Soldan bir kelime tıkla, sonra sağdan o kelimenin anlamını tıkla.</div>
+                    <div class="tutorial-demo">
+                        <div class="tutorial-demo-box">Kitap</div>
+                        <div class="tutorial-arrow">↓</div>
+                        <div class="tutorial-demo-box">Bunu Tıkla!</div>
+                        <div class="tutorial-arrow">↓</div>
+                        <div class="tutorial-demo-box matched">✓ Doğru!</div>
+                    </div>
+                </div>
+                
+                <div class="tutorial-step">
+                    <span class="tutorial-step-number">3</span>
+                    <div class="tutorial-step-title">Tüm Kelimeleri Eşleştir</div>
+                    <div class="tutorial-step-desc">Tüm kelimeleri doğru anlamlarıyla eşleştir. Her doğru eşleştirmede puan kazanacaksın!</div>
+                </div>
+                
+                <div class="tutorial-step">
+                    <span class="tutorial-step-number">4</span>
+                    <div class="tutorial-step-title">Hızlı Ol!</div>
+                    <div class="tutorial-step-desc">Süren sınırlı! ⏱️ Zaman bitiminden önce tüm kelimeleri eşleştir ve daha fazla puan kazan!</div>
+                </div>
+                
+                <div class="tutorial-footer">
+                    <button class="btn-tutorial-start" onclick="startFromTutorial()">Başla! 🎮</button>
+                    <button class="btn-tutorial-close" onclick="closeMatchingTutorial()">Kapat</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUIZ OYUNU SAYFASI -->
+        <div id="quizPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <button class="btn-back" onclick="showProfilePage()">← Geri</button>
+                    <h1>❓ Quiz Oyunu</h1>
+                    <div class="user-menu">
+                        <span class="user-points">🏆 <span id="quizPoints">0</span> puan</span>
+                    </div>
+                </header>
+
+                <div class="game-container">
+                    <div class="game-stats">
+                        <div class="stat-box">
+                            <span class="stat-label">Soru:</span>
+                            <span class="stat-value" id="quizQuestionNum">1/10</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Doğru:</span>
+                            <span class="stat-value" id="quizCorrect">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Yanlış:</span>
+                            <span class="stat-value" id="quizWrong">0</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Puanlar:</span>
+                            <span class="stat-value" id="quizScore">0</span>
+                        </div>
+                    </div>
+
+                    <div class="quiz-container">
+                        <div class="quiz-question-area">
+                            <div class="quiz-question">
+                                <h3>📝 Soru: <span id="quizQuestionText">Kelime ekleyerek başlayın!</span></h3>
+                            </div>
+                            
+                            <div class="quiz-options">
+                                <button class="quiz-option" onclick="answerQuiz(0)" id="quizOption0">
+                                    <span class="option-label">A)</span>
+                                    <span class="option-text" id="quizOptionText0">-</span>
+                                </button>
+                                <button class="quiz-option" onclick="answerQuiz(1)" id="quizOption1">
+                                    <span class="option-label">B)</span>
+                                    <span class="option-text" id="quizOptionText1">-</span>
+                                </button>
+                                <button class="quiz-option" onclick="answerQuiz(2)" id="quizOption2">
+                                    <span class="option-label">C)</span>
+                                    <span class="option-text" id="quizOptionText2">-</span>
+                                </button>
+                                <button class="quiz-option" onclick="answerQuiz(3)" id="quizOption3">
+                                    <span class="option-label">D)</span>
+                                    <span class="option-text" id="quizOptionText3">-</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="game-controls">
+                        <button class="btn-secondary" onclick="resetQuiz()">🔄 Baştan Başla</button>
+                        <button class="btn-primary" onclick="showProfilePage()">Bitti</button>
+                    </div>
+
+                    <div id="quizMessage"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CÜMLE EKLEME MODAL - YENİLENMİŞ -->
+        <div id="sentenceModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>💬 Cümle Ekle</h2>
+                    <button class="modal-close" onclick="closeSentenceModal()">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="word-info-modal">
+                        <h4>Kelime: <span id="modalWordName">-</span></h4>
+                        <p class="word-meaning-modal">Anlamı: <span id="modalWordMeaning">-</span></p>
+                    </div>
+                    
+                    <!-- DİL SEÇİMİ EKLENDİ -->
+                    <div class="language-selection">
+                        <label><strong>🌍 Cümle Dili Seçin:</strong></label>
+                        <div class="language-options">
+                            <button type="button" class="lang-option active" data-lang="turkish" data-points="5">
+                                TR Türkçe
+                            </button>
+                            <button type="button" class="lang-option" data-lang="english" data-points="7">
+                                İNG İngilizce
+                            </button>
+                            <button type="button" class="lang-option" data-lang="arabic" data-points="10">
+                                ARP Arapça
+                            </button>
+                        </div>
+                        <div class="points-preview">
+                            <small>Seçili dil: <span id="selectedLangName">Türkçe</span> • <span id="selectedPoints">5</span> puan</small>
+                        </div>
+                    </div>
+                    
+                    <form id="sentenceForm">
+                        <div class="input-group">
+                            <label>📝 Örnek Cümle</label>
+                            <textarea id="sentenceInput" placeholder="Bu kelime ile örnek bir cümle yazın..." rows="3" required></textarea>
+                            <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">ℹ️ Cümleniz en az 10 kelimeden oluşmalıdır.</small>
+                        </div>
+                        
+                        <div class="form-footer">
+                            <!-- PUAN BİLGİSİ DİNAMİK OLACAK -->
+                            <div class="points-info">✅ Admin onayından sonra <span id="sentencePoints">5</span> puan</div>
+                            <button type="submit" class="btn-primary">
+                                <span class="btn-icon">📝</span>
+                                Cümleyi Gönder
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="sentenceMessage" class="message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOŞLUK DOLDURMA OYUNU SAYFASI -->
+        <div id="fillBlankPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <button class="btn-back" onclick="showProfilePage()">← Geri</button>
+                    <h1>📝 Boşluk Doldurma Oyunu</h1>
+                    <div class="user-menu">
+                        <span class="user-points">🏆 <span id="fillBlankPoints">0</span> puan</span>
+                    </div>
+                </header>
+
+                <div class="fillblank-game-wrapper">
+                    <!-- Progress Bar -->
+                    <div class="fillblank-progress-section">
+                        <div class="fillblank-progress-header">
+                            <span class="fillblank-progress-label">İlerleme</span>
+                            <span class="fillblank-progress-text" id="fillBlankQuestionNum">1/10</span>
+                        </div>
+                        <div class="fillblank-progress-bar">
+                            <div class="fillblank-progress-fill" id="fillBlankProgressFill"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Row -->
+                    <div class="fillblank-stats-row">
+                        <div class="fillblank-stat">
+                            <div class="fillblank-stat-icon">✅</div>
+                            <div class="fillblank-stat-value" id="fillBlankCorrect">0</div>
+                            <div class="fillblank-stat-label">Doğru</div>
+                        </div>
+                        <div class="fillblank-stat">
+                            <div class="fillblank-stat-icon">❌</div>
+                            <div class="fillblank-stat-value" id="fillBlankWrong">0</div>
+                            <div class="fillblank-stat-label">Yanlış</div>
+                        </div>
+                        <div class="fillblank-stat">
+                            <div class="fillblank-stat-icon">⭐</div>
+                            <div class="fillblank-stat-value" id="fillBlankScore">0</div>
+                            <div class="fillblank-stat-label">Puan</div>
+                        </div>
+                    </div>
+
+                    <!-- Question Area -->
+                    <div class="fillblank-main-area">
+                        <div class="fillblank-word-header" id="fillBlankWordHeader"></div>
+                        <div class="fillblank-question-type" id="fillBlankQuestionType">📚 Anlam</div>
+                        
+                        <div class="fillblank-question-box">
+                            <p id="fillBlankQuestionText">Kelime ekleyerek başlayın!</p>
+                        </div>
+
+                        <!-- Options -->
+                        <div class="fillblank-answer-section">
+                            <div class="fillblank-input-wrapper">
+                                <input type="text" id="fillBlankAnswer" class="fillblank-answer-input" placeholder="Cevabı yazın veya aşağıdan seçin..." onkeypress="if(event.key === 'Enter') submitFillBlank()">
+                            </div>
+
+                            <div class="fillblank-buttons-group">
+                                <button class="fillblank-option-btn" onclick="selectFillBlankAnswer(this.textContent)" id="fillBlankChoice0">-</button>
+                                <button class="fillblank-option-btn" onclick="selectFillBlankAnswer(this.textContent)" id="fillBlankChoice1">-</button>
+                                <button class="fillblank-option-btn" onclick="selectFillBlankAnswer(this.textContent)" id="fillBlankChoice2">-</button>
+                                <button class="fillblank-option-btn" onclick="selectFillBlankAnswer(this.textContent)" id="fillBlankChoice3">-</button>
+                            </div>
+                        </div>
+
+                        <!-- Feedback Area -->
+                        <div class="fillblank-feedback" id="fillBlankFeedback"></div>
+
+                        <!-- Action Buttons -->
+                        <div class="fillblank-action-buttons">
+                            <button id="fillBlankSubmitBtn" class="btn-primary fillblank-submit-btn" onclick="submitFillBlank()">
+                                <span class="btn-icon">✓</span> Cevapla
+                            </button>
+                            <button id="fillBlankNextBtn" class="btn-secondary fillblank-next-btn" onclick="nextFillBlank()" style="display: none;">
+                                <span class="btn-icon">→</span> Sonraki
+                            </button>
+                            <button id="fillBlankFinishBtn" class="btn-success fillblank-finish-btn" onclick="finishFillBlank()" style="display: none;">
+                                <span class="btn-icon">🏁</span> Sonuçlar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MULTIPLAYER GAME PAGE -->
+        <div id="multiplayerPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <h1>🎮 Çok Oyunculu Oyun</h1>
+                </header>
+
+                <div class="game-container">
+                    <div class="multiplayer-board" id="multiplayerBoard">
+                        <div class="empty-state">
+                            <div class="empty-icon">🎮</div>
+                            <h3>Oyun yükleniyor...</h3>
+                        </div>
+                    </div>
+
+                    <div class="game-controls">
+                        <button class="btn-danger" onclick="quitMultiplayerGame()" style="margin-top: 20px; padding: 12px 20px; background: #e74c3c; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">⛔ Oyundan Çık</button>
+                    </div>
+
+                    <div id="multiplayerMessage"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FEEDBACK MODAL -->
+        <div id="feedbackModal" class="modal">
+            <div class="modal-content feedback-modal-content">
+                <div class="modal-header">
+                    <h2>💬 Geri Bildirim Gönder</h2>
+                    <button class="modal-close" onclick="closeFeedbackModal()">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <form id="feedbackForm" onsubmit="sendFeedback(event)">
+                        <div class="input-group">
+                            <label>📝 Geri Bildirim Türü</label>
+                            <small class="form-hint">Geri bildiriminizin türünü seçin</small>
+                            <select id="feedbackType" class="feedback-select" required>
+                                <option value="suggestion">💡 Öneri</option>
+                                <option value="bug">🐛 Hata</option>
+                                <option value="complaint">😞 Şikayet</option>
+                                <option value="praise">👏 Övgü</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>✍️ Mesajınız</label>
+                            <small class="form-hint">En az 10 karakter yazınız, detaylı olunuz</small>
+                            <textarea id="feedbackMessage" class="feedback-textarea" placeholder="Lütfen detaylı olarak açıklayın..." rows="5" required></textarea>
+                        </div>
+
+                        <div class="form-footer">
+                            <button type="submit" class="btn-primary">
+                                <span class="btn-icon">📤</span>
+                                Gönder
+                            </button>
+                        </div>
+                    </form>
+                    <div id="feedbackStatusMessage" class="message"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NOTIFICATIONS MODAL -->
+        <div id="notificationsModal" class="modal">
+            <div class="modal-content notifications-modal-content">
+                <div class="modal-header">
+                    <h2>🔔 Bildirimler</h2>
+                    <button class="modal-close" onclick="closeNotificationsModal()">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div id="notificationsList" class="notifications-list">
+                        <p class="loading-text">Yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI CHAT MODAL -->
+        <div id="chatModal" class="modal chat-modal" onclick="if(event.target.id === 'chatModal') closeChatModal()">
+            <div class="chat-modal-content">
+                <div class="chat-modal-header">
+                    <h2>🤖 AI Asistanı</h2>
+                    <button class="modal-close" onclick="closeChatModal()">×</button>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message bot-message">
+                        <div class="message-content">Merhaba! 👋 Ben AI asistanınız. Size nasıl yardımcı olabilirim?</div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Bir soru sorunuz..." onkeypress="handleChatKeyPress(event)">
+                    <button onclick="sendChatMessage()" class="chat-send-btn">📤</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFIL BİLGİLERİ SAYFASI -->
+        <div id="profileInfoPage" class="page">
+            <div class="container">
+                <header class="app-header">
+                    <button class="btn-back" onclick="showProfilePage()">← Geri</button>
+                    <h1>👤 Profil Bilgileri</h1>
+                    <div class="header-placeholder"></div>
+                </header>
+
+                <div class="profile-info-card-container">
+                    <div class="profile-header-section">
+                        <div class="profile-avatar-large" id="profileAvatarDisplay" onclick="openAvatarModal()" style="cursor: pointer;">👤</div>
+                        <h2 id="profileName">-</h2>
+                        <p class="profile-subtitle" id="profileClass">-</p>
+                        <div class="badge-display" id="badgeDisplay"></div>
+                        <div class="badge-progress-section" id="badgeProgressSection" style="display: none;">
+                            <div class="badge-progress-title">Sıradaki Rutbe</div>
+                            <div class="badge-progress-info">
+                                <span id="nextBadgeEmoji">-</span>
+                                <span id="nextBadgeName">-</span>
+                            </div>
+                            <div class="badge-progress-bar">
+                                <div class="badge-progress-fill" id="badgeProgressFill"></div>
+                            </div>
+                            <div class="badge-progress-text" id="badgeProgressText">-</div>
+                        </div>
+                        
+                        <div class="daily-streak-section" id="dailyStreakSection" style="display: none;">
+                            <div class="streak-header">
+                                <span class="streak-icon">🔥</span>
+                                <div class="streak-info">
+                                    <div class="streak-number" id="streakNumber">0</div>
+                                    <div class="streak-label">Günlük Seri</div>
+                                </div>
+                            </div>
+                            <div class="streak-bonus">
+                                <span class="bonus-label">Bugünün Bonusu</span>
+                                <span class="bonus-amount" id="streakBonusAmount">+50</span>
+                                <span class="bonus-points">puan</span>
+                            </div>
+                            <div class="streak-message" id="streakMessage">Her gün giriş yap, seri kütüğünü büyüt! 🚀</div>
+                        </div>
+                    </div>
+
+                    <div class="profile-stats-highlight">
+                        <div class="stat-highlight-item">
+                            <div class="stat-highlight-number" id="profileRank">-</div>
+                            <div class="stat-highlight-label">Sırada</div>
+                        </div>
+                        <div class="stat-highlight-item">
+                            <div class="stat-highlight-number" id="profileTotalPoints">-</div>
+                            <div class="stat-highlight-label">Puan</div>
+                        </div>
+                    </div>
+
+                    <div class="profile-details-grid">
+                        <div class="profile-detail-box">
+                            <div class="detail-icon">📚</div>
+                            <div class="detail-content">
+                                <label>Öğrenci Numarası</label>
+                                <p id="profileStudentId">-</p>
+                            </div>
+                        </div>
+
+                        <div class="profile-detail-box">
+                            <div class="detail-icon">📖</div>
+                            <div class="detail-content">
+                                <label>Eklenen Kelimeler</label>
+                                <p id="profileWordsCount">-</p>
+                            </div>
+                        </div>
+
+                        <div class="profile-detail-box">
+                            <div class="detail-icon">🎮</div>
+                            <div class="detail-content">
+                                <label>Oyun Sayısı</label>
+                                <p id="profileGamesCount">-</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="profile-ai-suggestions">
+                        <div class="ai-suggestions-header">
+                            <h3>🤖 AI Önerileri</h3>
+                            <p>Geliştirmen gereken alanlar</p>
+                        </div>
+                        <div class="ai-suggestions-list" id="aiSuggestionsList">
+                            <div class="suggestion-item loading">
+                                <span class="loading-text">Öneriler yükleniyor...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="modal-overlay">
+        <div class="modal-content info-modal-content">
+            <button class="modal-close-btn" onclick="closeInfoModal()">✕</button>
+            <h2>WordMaster Hakkında</h2>
+            <div class="info-text-content">
+                <p><strong>Ezberden sıkılanlar için tasarlanmış, öğrenmeyi oyuna dönüştüren yeni nesil kelime öğrenme platformu ile tanışın.</strong></p>
+                
+                <p>Bu platform, kelime öğrenmeyi deftere yazıp tekrar etmeye dayalı klasik yöntemlerin ötesine taşır. Türkçe, İngilizce ve Arapça dillerine odaklanan yapısıyla özellikle öğrenciler ve dil öğrenmek isteyenler için güçlü, eğlenceli ve sürdürülebilir bir öğrenme deneyimi sunar. Temel hedef; kelimeleri geçici olarak ezberletmek değil, kalıcı ve anlamlı bir şekilde öğretmektir.</p>
+                
+                <p>Sistemin merkezinde kullanıcıya özel olarak oluşturulan <strong>kişisel sözlük altyapısı</strong> yer alır. Kullanıcılar öğrendikleri veya öğrenmek istedikleri kelimeleri platforma ekleyerek tamamen kendilerine ait bir öğrenme havuzu oluşturur. Bu kelimeler yalnızca listelenmez; aynı zamanda tüm oyunların, alıştırmaların ve tekrar sistemlerinin temelini oluşturur. Böylece platform, her kullanıcı için dinamik ve kişiselleştirilmiş bir eğitim ortamına dönüşür. Kelime ekleme süreci dahi teşvik edilir ve puanlandırılarak öğrenme motivasyonu sürekli canlı tutulur.</p>
+                
+                <p>Öğrenme süreci tamamen <strong>oyunlaştırma (gamification)</strong> yaklaşımıyla desteklenmiştir.</p>
+                <ul>
+                    <li><strong>Eşleştirme oyunları</strong> ile kelimeler ve anlamları hızlı ve görsel odaklı şekilde pekiştirilir.</li>
+                    <li><strong>Çoktan seçmeli quizler</strong> aracılığıyla kelime bilgisi ölçülür ve tekrar sağlanır.</li>
+                    <li><strong>Boşluk doldurma çalışmaları</strong> sayesinde kelimeler bağlam içinde öğrenilerek gerçek kullanım becerisi kazandırılır.</li>
+                </ul>
+                <p>Bu yapı sayesinde öğrenme süreci sıkıcı bir zorunluluk olmaktan çıkar, doğal ve akıcı bir deneyime dönüşür.</p>
+                
+                <p>Platformda gerçekleştirilen her faydalı etkileşim ölçülür ve <strong>puan sistemi</strong> ile karşılık bulur. Kelime eklemek, oyun oynamak ve aktif olmak kullanıcıya kazanç sağlar. Dil zorluklarına göre optimize edilmiş bu sistem, kullanıcıyı düzenli öğrenmeye teşvik ederken rekabet ve devamlılık hissini de güçlendirir.</p>
+                
+                <p>Bunlara ek olarak, site içerisinde kullanıcılarla etkileşim kurabilen bir <strong>yapay zekâ</strong> yer almaktadır. Bu yapay zekâ; platformun kullanımında rehberlik eder, kullanıcıyı yönlendirir ve öğrenme deneyimini daha akıllı ve canlı hâle getirir. Böylece platform yalnızca bir uygulama değil, kullanıcıyla iletişim kuran dijital bir öğrenme asistanına dönüşür.</p>
+                
+                <p>Özetle bu platform; sözlük altyapısı, oyun temelli öğrenme modeli, motivasyon ve puan sistemi, gelişmiş analiz araçları ve yapay zekâ desteğini tek bir çatı altında toplayan modern bir <strong>Eğitim Teknolojisi (EdTech)</strong> çözümüdür.</p>
+                
+                <p>Kelime öğrenmeyi zorunluluk olmaktan çıkarıp sürdürülebilir bir alışkanlığa dönüştürmek isteyen herkes için tasarlanmıştır.</p>
+                
+                <p><em>Öğrenmeyi daha akıllı, daha eğlenceli ve daha etkili hâle getiren güçlü bir dijital deneyim.</em></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Mode Selection Modal -->
+    <div id="gameModeModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content game-mode-modal-content">
+            <button class="modal-close-btn" onclick="closeGameModeModal()">✕</button>
+            <h2>Nasıl Oynamak İstersin?</h2>
+            <div class="game-mode-options">
+                <div class="game-mode-card" onclick="startSoloGame()">
+                    <div class="mode-icon">🎮</div>
+                    <h3>Tek Kişi Oyna</h3>
+                    <p>Kendi hızında ilerle</p>
+                    <span class="mode-badge">+10 puan</span>
+                </div>
+                <div class="game-mode-card" onclick="showInviteForm()">
+                    <div class="mode-icon">👥</div>
+                    <h3>Arkadaşla Oyna</h3>
+                    <p>Arkadaşını davet et</p>
+                    <span class="mode-badge">+15 puan</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Invite Form Modal -->
+    <div id="gameInviteModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content game-invite-modal-content">
+            <button class="modal-close-btn" onclick="closeGameInviteModal()">✕</button>
+            <h2>Arkadaşını Davet Et</h2>
+            <div class="invite-form-container">
+                <input 
+                    type="text" 
+                    id="friendStudentId" 
+                    class="invite-input" 
+                    placeholder="Arkadaşının Okul No. (Örn: 2024001)"
+                    maxlength="20"
+                >
+                <button class="btn-primary invite-btn" onclick="sendGameInvite()">Davet Gönder</button>
+                <button class="btn-secondary" onclick="closeGameInviteModal()">İptal</button>
+                <div id="inviteMessage" class="invite-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Waiting Screen -->
+    <div id="gameWaitingScreen" class="game-waiting-screen" style="display: none;">
+        <div class="waiting-content">
+            <div class="waiting-animation">
+                <div class="spinner"></div>
+            </div>
+            <h2>Arkadaşınız Bekleniyor...</h2>
+            <p id="friendName" class="friend-name"></p>
+            <button class="btn-secondary" onclick="cancelGameWait()">İptal Et</button>
+        </div>
+    </div>
+
+    <!-- Game Rejection Screen -->
+    <div id="gameRejectionScreen" class="game-rejection-screen" style="display: none;">
+        <div class="rejection-content">
+            <div class="rejection-icon">❌</div>
+            <h2>Arkadaşınız Katılamadı</h2>
+            <p>Davet reddedildi veya zaman aşımına uğradı</p>
+            <button class="btn-primary" onclick="closeGameRejectionScreen()">Tamam</button>
+        </div>
+    </div>
+
+    <div id="avatarModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Avatar Seç</h2>
+                <span class="close-btn" onclick="closeAvatarModal()">&times;</span>
+            </div>
+            <div class="avatar-grid" id="avatarGrid">
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
