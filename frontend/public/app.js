@@ -4462,7 +4462,7 @@ function startQuestionTimer() {
             
             if (isCurrentPlayer) {
                 console.log('⏰ Zaman doldu, otomatik yanlış cevap gönderiliyor...');
-                submitAnswer(false);
+                submitAnswer(false, true); // isTimeout = true olarak gönder
             } else {
                 console.log('⏰ Zaman doldu ama sıra sizde değil, bekle...');
             }
