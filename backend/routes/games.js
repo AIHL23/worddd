@@ -338,24 +338,19 @@ router.post('/session/:sessionId/start', async (req, res) => {
         };
       };
       
+      session.words = selectedWords.map(formatWord);
+      
       if (isMultiplayer) {
-        const player1Words = selectedWords.slice(0, wordsPerPlayer).map(formatWord);
-        const player2Words = selectedWords.slice(wordsPerPlayer).map(formatWord);
-        session.words = selectedWords.map(formatWord);
         session.playerQuestionMapping = [
           {
             studentId: session.playerStudentIds[0],
-            words: player1Words,
             questionIndices: Array.from({length: wordsPerPlayer}, (_, i) => i)
           },
           {
             studentId: session.playerStudentIds[1],
-            words: player2Words,
             questionIndices: Array.from({length: wordsPerPlayer}, (_, i) => i + wordsPerPlayer)
           }
         ];
-      } else {
-        session.words = selectedWords.map(formatWord);
       }
     }
 
