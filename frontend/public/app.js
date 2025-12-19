@@ -4203,7 +4203,7 @@ function initMultiplayerGame() {
         clearInterval(multiplayerState.timerInterval);
     }
 
-    displayNextQuestion();
+    showWaitingForOpponent();
 }
 
 function displayNextQuestion() {
@@ -4543,64 +4543,30 @@ async function startGameAfterCountdown() {
     try {
         const sessionId = multiplayerState.sessionId || window.gameSessionId;
         
-        console.log('🎮 startGameAfterCountdown - SessionId kontrol:', { 
-            multiplayerSessionId: multiplayerState.sessionId, 
-            windowSessionId: window.gameSessionId,
-            finalSessionId: sessionId
-        });
-        
         if (!sessionId || sessionId === 'undefined') {
-            console.error('❌ Session ID bulunamadı:', { multiplayerSessionId: multiplayerState.sessionId, windowSessionId: window.gameSessionId });
+            console.error('❌ Session ID bulunamadı');
             const board = document.getElementById('multiplayerBoard');
             board.innerHTML = `<div class="empty-state"><h3>❌ Oyun oturumu bulunamadı</h3></div>`;
             return;
         }
         
-        console.log('🎮 API çağrısı yapılıyor:', `${window.API_URL}/api/games/session/${sessionId}/start`);
-        
-        const response = await fetch(`${window.API_URL}/api/games/session/${sessionId}/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language: 'all', studentId: currentUser.studentId })
-        });
-
-        const data = await response.json();
-        
-        console.log('🎮 API Cevabı:', { statusOk: response.ok, success: data.success, message: data.message });
-        
-        if (response.ok && data.success) {
-            window.currentGameSession = data.session;
-            window.currentGameSessionWords = data.words || [];
-            window.gameSessionId = sessionId;
-            
-            multiplayerState.sessionId = sessionId;
-            multiplayerState.words = data.words || [];
-            multiplayerState.currentWordIndex = 0;
-            multiplayerState.currentPlayerIndex = 0;
-            
-            const playerStudentIds = data.session.playerStudentIds || [];
-            multiplayerState.playerIndex = playerStudentIds.indexOf(currentUser.studentId);
-            
-            const playerScores = data.session.playerScores || [];
-            multiplayerState.playerScores = playerScores.map(ps => ({
-                name: ps.playerName || ps.studentId,
-                score: ps.score || 0,
-                correct: ps.correctAnswers || 0,
-                total: ps.totalAnswered || 0
-            }));
-            
-            multiplayerState.timeLeft = 15;
-            
-            if (multiplayerState.timerInterval) {
-                clearInterval(multiplayerState.timerInterval);
-            }
-            
-            startSyncingGameState();
-            displayNextQuestion();
-        } else {
+        if (!multiplayerState.words || multiplayerState.words.length === 0) {
+            console.error('❌ Oyun kelimesiz başlıyor!');
             const board = document.getElementById('multiplayerBoard');
-            board.innerHTML = `<div class="empty-state"><h3>❌ Oyun başlatılamadı: ${data.message || 'Bilinmeyen hata'}</h3></div>`;
+            board.innerHTML = `<div class="empty-state"><h3>❌ Kelime yüklemesi başarısız oldu</h3></div>`;
+            return;
         }
+        
+        multiplayerState.currentWordIndex = 0;
+        multiplayerState.currentPlayerIndex = 0;
+        multiplayerState.timeLeft = 15;
+        
+        if (multiplayerState.timerInterval) {
+            clearInterval(multiplayerState.timerInterval);
+        }
+        
+        startSyncingGameState();
+        displayNextQuestion();
     } catch (error) {
         console.error('Oyun başlatma hatası:', error);
         const board = document.getElementById('multiplayerBoard');
