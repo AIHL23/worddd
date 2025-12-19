@@ -1,4 +1,4 @@
-﻿// Global Error Handlers
+// Global Error Handlers
 window.addEventListener('unhandledrejection', event => {
   console.error('❌ Unhandled Promise Rejection:', event.reason);
 });
@@ -272,6 +272,28 @@ async function resetAllPoints() {
             await loadAdminStudentsList();
             await loadGameStatistics();
             await loadWeeklyTopStudents();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        alert('❌ Sunucu hatası: ' + error.message);
+    }
+}
+
+async function resetDailyStreaks() {
+    if (!confirm('⚠️ TÜM ÖĞRENCİLERİN GÜNLÜK SERİLERİ SIFIRLANACAKTIR! Emin misiniz?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${window.API_URL}/api/admin/reset-daily-streaks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert('✅ ' + data.message);
         } else {
             alert('❌ ' + data.message);
         }
@@ -4258,7 +4280,7 @@ function displayNextQuestion() {
     startQuestionTimer();
 }
 
-async function submitAnswer(isCorrect) {
+async function submitAnswer(isCorrect, isTimeout = false) {
     if (multiplayerState.timerInterval) {
         clearInterval(multiplayerState.timerInterval);
     }
@@ -4284,6 +4306,7 @@ async function submitAnswer(isCorrect) {
                 studentId: currentUser.studentId,
                 wordIndex: multiplayerState.currentWordIndex,
                 answer: isCorrect,
+                isTimeout: isTimeout,
                 currentPlayerIndex: multiplayerState.currentPlayerIndex
             })
         });
