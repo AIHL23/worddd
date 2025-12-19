@@ -339,14 +339,18 @@ router.post('/session/:sessionId/start', async (req, res) => {
       };
       
       if (isMultiplayer) {
+        const player1Words = selectedWords.slice(0, wordsPerPlayer).map(formatWord);
+        const player2Words = selectedWords.slice(wordsPerPlayer).map(formatWord);
         session.words = selectedWords.map(formatWord);
         session.playerQuestionMapping = [
           {
             studentId: session.playerStudentIds[0],
+            words: player1Words,
             questionIndices: Array.from({length: wordsPerPlayer}, (_, i) => i)
           },
           {
             studentId: session.playerStudentIds[1],
+            words: player2Words,
             questionIndices: Array.from({length: wordsPerPlayer}, (_, i) => i + wordsPerPlayer)
           }
         ];
@@ -371,8 +375,11 @@ router.post('/session/:sessionId/start', async (req, res) => {
     if (isMultiplayer && session.playerQuestionMapping && session.playerQuestionMapping.length === 2) {
       const { studentId: requestingStudentId } = req.body;
       const playerMapping = session.playerQuestionMapping.find(pm => pm.studentId === requestingStudentId);
-      playerQuestionIndices = playerMapping ? playerMapping.questionIndices : [];
-      console.log('📚 Returning all words for student:', requestingStudentId, 'Question indices:', playerQuestionIndices);
+      if (playerMapping) {
+        wordsToReturn = playerMapping.words || [];
+        playerQuestionIndices = playerMapping.questionIndices || [];
+      }
+      console.log('📚 Returning words for student:', requestingStudentId, 'Word count:', wordsToReturn.length);
     }
 
     res.json({
@@ -391,7 +398,7 @@ router.post('/session/:sessionId/start', async (req, res) => {
 router.post('/session/:sessionId/answer', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const { studentId, wordIndex, answer, isCorrect, currentPlayerIndex } = req.body;
+    const { studentId, wordIndex, answer, isTimeout } = req.body;
 
     const session = await GameSession.findById(sessionId);
     if (!session) {
@@ -423,23 +430,21 @@ router.post('/session/:sessionId/answer', async (req, res) => {
       words[wordIndex].correctAnswer = answer;
 
       const wordFromDB = await Word.findById(currentWord.wordId);
-      if (wordFromDB) {
+      if (isTimeout) {
+        isAnswerCorrect = false;
+        console.log(`⏰ Timeout - cevap otomatik yanlış sayıldı: ${studentId}, wordIndex: ${wordIndex}`);
+      } else if (wordFromDB) {
         const meaningMatches = wordFromDB.meaning === currentWord.meaning;
         isAnswerCorrect = (answer === true && meaningMatches) || (answer === false && !meaningMatches);
+        console.log(`✅ Answer validation - studentId: ${studentId}, wordIndex: ${wordIndex}, answer: ${answer}, meaningMatches: ${meaningMatches}, isCorrect: ${isAnswerCorrect}`);
       } else {
-        isAnswerCorrect = answer === true;
+        console.warn(`⚠️ Word not found in DB: ${currentWord.wordId}`);
+        isAnswerCorrect = false;
       }
 
       if (isAnswerCorrect) {
         playerScore.correctAnswers = (playerScore.correctAnswers || 0) + 1;
-        const points = 20;
-        playerScore.score = (playerScore.score || 0) + points;
-
-        const user = await User.findOne({ studentId });
-        if (user) {
-          user.points = (user.points || 0) + points;
-          await user.save();
-        }
+        playerScore.score = (playerScore.score || 0) + 20;
       }
 
       playerScore.totalAnswered = (playerScore.totalAnswered || 0) + 1;
