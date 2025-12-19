@@ -4033,15 +4033,38 @@ async function sendGameInvite() {
             messageEl.innerHTML = '✅ Davet gönderildi! Oyuna giriliyor...';
             messageEl.className = 'invite-message success';
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 closeGameInviteModal();
                 window.gameSessionId = data.gameSessionId;
                 window.currentGameSession = data.gameSession;
-                window.currentGameSessionWords = [];
-                multiplayerState.sessionId = data.gameSessionId;
-                switchPage('multiplayerPage');
-                showWaitingForOpponent();
-                checkGameInvitationAcceptance(data.invitation._id, data.gameSessionId);
+                
+                try {
+                    const startResponse = await fetch(`${window.API_URL}/api/games/session/${data.gameSessionId}/start`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language: 'all', studentId: currentUser.studentId })
+                    });
+
+                    const startData = await startResponse.json();
+                    if (startResponse.ok && startData.success) {
+                        window.currentGameSession = startData.session;
+                        window.currentGameSessionWords = startData.words || [];
+                        
+                        multiplayerState.sessionId = data.gameSessionId;
+                        multiplayerState.words = startData.words || [];
+                        
+                        switchPage('multiplayerPage');
+                        showWaitingForOpponent();
+                        checkGameInvitationAcceptance(data.invitation._id, data.gameSessionId);
+                    } else {
+                        messageEl.innerHTML = '❌ Kelimeler yüklenemedi';
+                        messageEl.className = 'invite-message error';
+                    }
+                } catch (error) {
+                    console.error('Oyun başlatma hatası:', error);
+                    messageEl.innerHTML = '❌ Bağlantı hatası';
+                    messageEl.className = 'invite-message error';
+                }
             }, 1000);
         } else {
             messageEl.innerHTML = `❌ ${data.message || 'Davet gönderilemedi'}`;
@@ -4203,7 +4226,15 @@ function initMultiplayerGame() {
         clearInterval(multiplayerState.timerInterval);
     }
 
-    showWaitingForOpponent();
+    const isGameAlreadyStarted = window.currentGameSession && window.currentGameSession.status === 'active';
+    if (isGameAlreadyStarted) {
+        console.log('🎮 Oyun zaten başlamış, direkt başlatılıyor');
+        startSyncingGameState();
+        displayNextQuestion();
+    } else {
+        console.log('⏳ Oyun henüz başlamadı, opponent bekleniyor');
+        showWaitingForOpponent();
+    }
 }
 
 function displayNextQuestion() {
@@ -4551,10 +4582,25 @@ async function startGameAfterCountdown() {
         }
         
         if (!multiplayerState.words || multiplayerState.words.length === 0) {
-            console.error('❌ Oyun kelimesiz başlıyor!');
-            const board = document.getElementById('multiplayerBoard');
-            board.innerHTML = `<div class="empty-state"><h3>❌ Kelime yüklemesi başarısız oldu</h3></div>`;
-            return;
+            console.log('📚 Kelimeler yüklenmedi, yeniden yükleniyor...');
+            const response = await fetch(`${window.API_URL}/api/games/session/${sessionId}/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language: 'all', studentId: currentUser.studentId })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success && data.words && data.words.length > 0) {
+                window.currentGameSession = data.session;
+                window.currentGameSessionWords = data.words || [];
+                multiplayerState.words = data.words || [];
+                console.log('✅ Kelimeler yüklendi:', multiplayerState.words.length);
+            } else {
+                console.error('❌ Kelimeler hala yüklenemedi');
+                const board = document.getElementById('multiplayerBoard');
+                board.innerHTML = `<div class="empty-state"><h3>❌ Kelime yüklemesi başarısız oldu</h3></div>`;
+                return;
+            }
         }
         
         multiplayerState.currentWordIndex = 0;
