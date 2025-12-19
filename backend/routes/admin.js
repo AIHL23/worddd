@@ -751,4 +751,23 @@ router.post('/reset-all-points', async (req, res) => {
   }
 });
 
+// ✅ GÜNLÜK SERİLERİ SIFIRLA
+router.post('/reset-daily-streaks', async (req, res) => {
+  try {
+    const result = await User.updateMany(
+      { role: 'student' },
+      { $set: { dailyStreak: 0, lastLoginDate: null } }
+    );
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} öğrencinin günlük serileri sıfırlandı!`,
+      resetCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Seri sıfırlama hatası:', error);
+    res.status(500).json({ message: 'Seri sıfırlama hatası', error: error.message });
+  }
+});
+
 module.exports = router;
