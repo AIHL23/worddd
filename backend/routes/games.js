@@ -378,8 +378,12 @@ router.post('/session/:sessionId/start', async (req, res) => {
       if (playerMapping) {
         wordsToReturn = playerMapping.words || [];
         playerQuestionIndices = playerMapping.questionIndices || [];
+        console.log('📚 Returning player-specific words for student:', requestingStudentId, 'Word count:', wordsToReturn.length);
+      } else {
+        console.warn('⚠️ Player mapping not found for:', requestingStudentId, 'Available:', session.playerQuestionMapping.map(p => p.studentId));
+        wordsToReturn = session.words || [];
+        console.log('📚 Returning all words instead, count:', wordsToReturn.length);
       }
-      console.log('📚 Returning words for student:', requestingStudentId, 'Word count:', wordsToReturn.length);
     }
 
     res.json({
