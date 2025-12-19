@@ -4033,52 +4033,24 @@ async function sendGameInvite() {
             messageEl.innerHTML = '✅ Davet gönderildi! Oyuna giriliyor...';
             messageEl.className = 'invite-message success';
             
-            setTimeout(async () => {
+            setTimeout(() => {
                 closeGameInviteModal();
                 window.gameSessionId = data.gameSessionId;
                 window.currentGameSession = data.gameSession;
                 
-                try {
-                    console.log('📝 /start çağrısı yapılıyor:', data.gameSessionId);
-                    const startResponse = await fetch(`${window.API_URL}/api/games/session/${data.gameSessionId}/start`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ language: 'all', studentId: currentUser.studentId })
-                    });
-
-                    const startData = await startResponse.json();
-                    console.log('📝 /start yanıtı:', { 
-                        ok: startResponse.ok, 
-                        success: startData.success, 
-                        wordCount: startData.words?.length,
-                        sessionId: startData.session?._id,
-                        playersLength: startData.session?.players?.length,
-                        status: startData.session?.status,
-                        mappingLength: startData.session?.playerQuestionMapping?.length
-                    });
-                    
-                    if (startResponse.ok && startData.success) {
-                        window.currentGameSession = startData.session;
-                        window.currentGameSessionWords = startData.words || [];
-                        
-                        multiplayerState.sessionId = data.gameSessionId;
-                        multiplayerState.words = startData.words || [];
-                        
-                        console.log('✅ Kelimeler başarılı yüklendi:', multiplayerState.words.length);
-                        
-                        switchPage('multiplayerPage');
-                        showWaitingForOpponent();
-                        checkGameInvitationAcceptance(data.invitation._id, data.gameSessionId);
-                    } else {
-                        console.error('❌ /start başarısız:', startData);
-                        messageEl.innerHTML = '❌ Kelimeler yüklenemedi: ' + (startData.message || 'Bilinmeyen hata');
-                        messageEl.className = 'invite-message error';
-                    }
-                } catch (error) {
-                    console.error('Oyun başlatma hatası:', error);
-                    messageEl.innerHTML = '❌ Bağlantı hatası: ' + error.message;
-                    messageEl.className = 'invite-message error';
-                }
+                console.log('🎮 Session bilgileri:', {
+                    sessionId: data.gameSessionId,
+                    playersLength: data.gameSession?.players?.length,
+                    playerStudentIds: data.gameSession?.playerStudentIds
+                });
+                
+                multiplayerState.sessionId = data.gameSessionId;
+                window.currentGameSessionWords = [];
+                multiplayerState.words = [];
+                
+                switchPage('multiplayerPage');
+                showWaitingForOpponent();
+                checkGameInvitationAcceptance(data.invitation._id, data.gameSessionId);
             }, 1000);
         } else {
             messageEl.innerHTML = `❌ ${data.message || 'Davet gönderilemedi'}`;
