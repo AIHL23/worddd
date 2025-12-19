@@ -458,6 +458,42 @@ router.post('/session/:sessionId/answer', async (req, res) => {
       session.currentWordIndex++;
     }
 
+    // Oyun bitiş kontrolü - eğer tüm kelimeler bittiyse
+    if (session.currentWordIndex >= session.words.length) {
+        // Oyunu otomatik tamamla
+        session.status = 'completed';
+        session.completedAt = new Date();
+        session.duration = Math.floor((session.completedAt - session.startedAt) / 1000);
+
+        const maxScore = Math.max(...session.playerScores.map(ps => ps.score));
+        session.winnerIds = session.playerScores
+          .filter(ps => ps.score === maxScore)
+          .map(ps => ps.playerId);
+
+        session.totalPoints = session.playerScores.reduce((sum, ps) => sum + ps.score, 0);
+        
+        // Puanları dağıt
+        for (let playerScore of session.playerScores) {
+          const user = await User.findById(playerScore.playerId);
+          if (user) {
+            user.gamesPlayed = (user.gamesPlayed || 0) + 1;
+            user.totalGameTime = (user.totalGameTime || 0) + (session.duration || 0);
+            
+            let bonusPoints = 0;
+            if (session.winnerIds.some(winnerId => winnerId.toString() === user._id.toString())) {
+              bonusPoints = 100;
+            } else if (maxScore === 0 || session.playerScores.every(ps => ps.score === 0)) {
+              bonusPoints = 0;
+            } else if (maxScore === playerScore.score && session.playerScores.filter(ps => ps.score === maxScore).length > 1) {
+              bonusPoints = 50;
+            }
+            
+            user.points = (user.points || 0) + playerScore.score + bonusPoints;
+            await user.save();
+          }
+        }
+    }
+
     await session.save();
 
     const playerScores = session.playerScores.map(ps => ({
@@ -473,7 +509,8 @@ router.post('/session/:sessionId/answer', async (req, res) => {
       playerScore,
       playerScores,
       currentPlayerIndex: session.currentPlayerIndex,
-      currentWordIndex: session.currentWordIndex
+      currentWordIndex: session.currentWordIndex,
+      isGameFinished: session.status === 'completed'
     });
   } catch (error) {
     console.error('Cevap kaydı hatası:', error);
