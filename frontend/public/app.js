@@ -4408,10 +4408,19 @@ async function startSyncingGameState() {
                     if (session.status === 'completed' || session.status === 'abandoned') {
                         clearInterval(gameStateSyncInterval);
                         handleGameEnd(session);
+                        return; // Oyun bitti, daha fazla işlem yapma
                     }
                     
+                    // Sadece kelime veya oyuncu değiştiyse ekranı güncelle
+                    // Ancak oyun bitmişse (yukarıdaki kontrol) buraya gelmemeli
                     if (oldPlayerIndex !== multiplayerState.currentPlayerIndex || oldWordIndex !== multiplayerState.currentWordIndex) {
-                        displayNextQuestion();
+                        // Eğer kelime indeksi limitin dışındaysa oyunu bitir
+                        if (multiplayerState.currentWordIndex >= multiplayerState.words.length) {
+                             // Backend zaten completed yapacak, biz sadece bekleyelim veya bitirelim
+                             // endMultiplayerGame() çağrısı burada yapılabilir ama backend'in status güncellemesini beklemek daha güvenli
+                        } else {
+                            displayNextQuestion();
+                        }
                     }
                 }
             }
