@@ -297,9 +297,9 @@ router.post('/session/:sessionId/start', async (req, res) => {
     }
 
     console.log('📚 Searching for words with query:', query);
+    const isMultiplayer = session.players && session.players.length === 2;
     
     if (!session.words || session.words.length === 0) {
-      const isMultiplayer = session.players && session.players.length === 2;
       const wordsPerPlayer = 10;
       const totalWordsNeeded = isMultiplayer ? wordsPerPlayer * 2 : wordsPerPlayer;
       
@@ -368,30 +368,21 @@ router.post('/session/:sessionId/start', async (req, res) => {
 
     await session.save();
 
-    const isMultiplayer = session.players && session.players.length === 2;
     let wordsToReturn = session.words || [];
-    let playerQuestionIndices = [];
+    let playerQuestionMapping = session.playerQuestionMapping || [];
     
-    if (isMultiplayer && session.playerQuestionMapping && session.playerQuestionMapping.length === 2) {
-      const { studentId: requestingStudentId } = req.body;
-      const playerMapping = session.playerQuestionMapping.find(pm => pm.studentId === requestingStudentId);
-      if (playerMapping) {
-        wordsToReturn = playerMapping.words || [];
-        playerQuestionIndices = playerMapping.questionIndices || [];
-        console.log('📚 Returning player-specific words for student:', requestingStudentId, 'Word count:', wordsToReturn.length);
-      } else {
-        console.warn('⚠️ Player mapping not found for:', requestingStudentId, 'Available:', session.playerQuestionMapping.map(p => p.studentId));
-        wordsToReturn = session.words || [];
-        console.log('📚 Returning all words instead, count:', wordsToReturn.length);
-      }
-    }
+    console.log('📚 Response için hazırlanıyor:', {
+      totalWords: wordsToReturn.length,
+      isMultiplayer,
+      mappingCount: playerQuestionMapping.length
+    });
 
     res.json({
       success: true,
       message: 'Oyun başlatıldı',
       session,
       words: wordsToReturn,
-      playerQuestionIndices: playerQuestionIndices
+      playerQuestionMapping: playerQuestionMapping
     });
   } catch (error) {
     console.error('❌ Oyun başlatma hatası:', error);
