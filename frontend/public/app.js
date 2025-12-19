@@ -4137,37 +4137,56 @@ function checkGameInvitationStatus(invitationId) {
 async function startMultiplayerGame(gameSessionId) {
     try {
         if (!gameSessionId || gameSessionId === 'undefined' || gameSessionId === '') {
-            console.error('❌ gameSessionId undefined:', { gameSessionId, type: typeof gameSessionId });
-            alert('❌ Oyun oturumu bulunamadı. Bildirim verilerini kontrol edin.');
+            console.error('❌ gameSessionId undefined');
+            alert('❌ Oyun oturumu bulunamadı.');
             return;
         }
         
-        console.log('🎮 Oyun başlatılıyor:', gameSessionId);
-        const response = await fetch(`${window.API_URL}/api/games/session/${gameSessionId}/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ language: 'all', studentId: currentUser.studentId })
-        });
-
-        const data = await response.json();
-        console.log('📦 API Cevab:', data);
+        console.log('🎮 Oyun açılıyor:', gameSessionId);
+        switchPage('multiplayerPage');
         
-        if (response.ok && data.success) {
-            window.currentGameSession = data.session;
-            window.currentGameSessionWords = data.words || [];
+        const getResponse = await fetch(`${window.API_URL}/api/games/session/${gameSessionId}`);
+        const getData = await getResponse.json();
+        
+        if (getResponse.ok && getData.session) {
+            window.currentGameSession = getData.session;
             window.gameSessionId = gameSessionId;
             
-            console.log('✅ Kelimeler yüklendi:', window.currentGameSessionWords.length);
+            console.log('📋 Session yüklendi, kelimeler şu anda:', getData.session.words?.length || 0);
             
-            initMultiplayerGame();
-            switchPage('multiplayerPage');
+            if (getData.session.words && getData.session.words.length > 0) {
+                window.currentGameSessionWords = getData.session.words;
+                multiplayerState.words = getData.session.words;
+                console.log('✅ Kelimeler bulundu:', window.currentGameSessionWords.length);
+                initMultiplayerGame();
+            } else {
+                console.log('📝 Kelimeler bulunamadı, /start çağrısı yapılıyor...');
+                const startResponse = await fetch(`${window.API_URL}/api/games/session/${gameSessionId}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language: 'all', studentId: currentUser.studentId })
+                });
+
+                const startData = await startResponse.json();
+                if (startResponse.ok && startData.words && startData.words.length > 0) {
+                    window.currentGameSession = startData.session;
+                    window.currentGameSessionWords = startData.words;
+                    multiplayerState.words = startData.words;
+                    console.log('✅ Kelimeler /start ile yüklendi:', startData.words.length);
+                    initMultiplayerGame();
+                } else {
+                    const board = document.getElementById('multiplayerBoard');
+                    board.innerHTML = '<div class="empty-state"><h3>❌ Kelime yüklemesi başarısız oldu</h3></div>';
+                }
+            }
         } else {
-            console.error('❌ Oyun başlatılamadı:', data.message);
-            alert(`❌ Oyun başlatılamadı: ${data.message || 'Bilinmeyen hata'}`);
+            const board = document.getElementById('multiplayerBoard');
+            board.innerHTML = '<div class="empty-state"><h3>❌ Session bulunamadı</h3></div>';
         }
     } catch (error) {
-        console.error('❌ startMultiplayerGame Hata:', error);
-        alert('❌ Bağlantı hatası: ' + error.message);
+        console.error('❌ Hata:', error);
+        const board = document.getElementById('multiplayerBoard');
+        board.innerHTML = '<div class="empty-state"><h3>❌ Bağlantı hatası</h3></div>';
     }
 }
 
