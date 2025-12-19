@@ -4039,6 +4039,7 @@ async function sendGameInvite() {
                 window.currentGameSession = data.gameSession;
                 
                 try {
+                    console.log('📝 /start çağrısı yapılıyor:', data.gameSessionId);
                     const startResponse = await fetch(`${window.API_URL}/api/games/session/${data.gameSessionId}/start`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -4046,6 +4047,16 @@ async function sendGameInvite() {
                     });
 
                     const startData = await startResponse.json();
+                    console.log('📝 /start yanıtı:', { 
+                        ok: startResponse.ok, 
+                        success: startData.success, 
+                        wordCount: startData.words?.length,
+                        sessionId: startData.session?._id,
+                        playersLength: startData.session?.players?.length,
+                        status: startData.session?.status,
+                        mappingLength: startData.session?.playerQuestionMapping?.length
+                    });
+                    
                     if (startResponse.ok && startData.success) {
                         window.currentGameSession = startData.session;
                         window.currentGameSessionWords = startData.words || [];
@@ -4053,16 +4064,19 @@ async function sendGameInvite() {
                         multiplayerState.sessionId = data.gameSessionId;
                         multiplayerState.words = startData.words || [];
                         
+                        console.log('✅ Kelimeler başarılı yüklendi:', multiplayerState.words.length);
+                        
                         switchPage('multiplayerPage');
                         showWaitingForOpponent();
                         checkGameInvitationAcceptance(data.invitation._id, data.gameSessionId);
                     } else {
-                        messageEl.innerHTML = '❌ Kelimeler yüklenemedi';
+                        console.error('❌ /start başarısız:', startData);
+                        messageEl.innerHTML = '❌ Kelimeler yüklenemedi: ' + (startData.message || 'Bilinmeyen hata');
                         messageEl.className = 'invite-message error';
                     }
                 } catch (error) {
                     console.error('Oyun başlatma hatası:', error);
-                    messageEl.innerHTML = '❌ Bağlantı hatası';
+                    messageEl.innerHTML = '❌ Bağlantı hatası: ' + error.message;
                     messageEl.className = 'invite-message error';
                 }
             }, 1000);
@@ -4582,21 +4596,12 @@ async function startGameAfterCountdown() {
         }
         
         if (!multiplayerState.words || multiplayerState.words.length === 0) {
-            console.log('📚 Kelimeler yüklenmedi, yeniden yükleniyor...');
-            const response = await fetch(`${window.API_URL}/api/games/session/${sessionId}/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ language: 'all', studentId: currentUser.studentId })
-            });
-
-            const data = await response.json();
-            if (response.ok && data.success && data.words && data.words.length > 0) {
-                window.currentGameSession = data.session;
-                window.currentGameSessionWords = data.words || [];
-                multiplayerState.words = data.words || [];
-                console.log('✅ Kelimeler yüklendi:', multiplayerState.words.length);
+            console.log('📚 Kelimeler yüklenmedi, windows kelimelerini kontrol ettim');
+            if (window.currentGameSessionWords && window.currentGameSessionWords.length > 0) {
+                multiplayerState.words = window.currentGameSessionWords;
+                console.log('✅ Window kelimelerinden yüklendi:', multiplayerState.words.length);
             } else {
-                console.error('❌ Kelimeler hala yüklenemedi');
+                console.error('❌ Kelimeler bulunamadı');
                 const board = document.getElementById('multiplayerBoard');
                 board.innerHTML = `<div class="empty-state"><h3>❌ Kelime yüklemesi başarısız oldu</h3></div>`;
                 return;
