@@ -274,16 +274,12 @@ router.post('/session/:sessionId/start', async (req, res) => {
     const { sessionId } = req.params;
     const { language = 'all' } = req.body;
 
-    console.log('🎮 Game start request:', { sessionId, language, type: typeof sessionId });
-
     if (!sessionId || sessionId === 'undefined') {
-      console.error('❌ SessionId invalid:', sessionId);
       return res.status(400).json({ message: 'Geçersiz session ID' });
     }
 
     const session = await GameSession.findById(sessionId);
     if (!session) {
-      console.error('❌ Session not found in DB:', sessionId);
       return res.status(404).json({ message: 'Oyun oturumu bulunamadı' });
     }
 
@@ -291,38 +287,30 @@ router.post('/session/:sessionId/start', async (req, res) => {
       return res.status(400).json({ message: 'Oyun zaten tamamlanmış veya iptal edilmiş' });
     }
 
-    let query = { status: 'approved' };
-    if (language !== 'all') {
-      query.language = language;
-    }
-
-    console.log('📚 Searching for words with query:', query);
-    const isMultiplayer = session.players && session.players.length === 2;
-    
     if (!session.words || session.words.length === 0) {
+      const isMultiplayer = session.players && session.players.length === 2;
       const wordsPerPlayer = 10;
       const totalWordsNeeded = isMultiplayer ? wordsPerPlayer * 2 : wordsPerPlayer;
       
+      let query = { status: 'approved' };
+      if (language !== 'all') {
+        query.language = language;
+      }
+
       const allWords = await Word.find(query).select('_id word meaning language').exec();
-      
-      console.log('📚 Found total words:', allWords.length, 'Needed:', totalWordsNeeded, 'Multiplayer:', isMultiplayer);
 
       if (allWords.length === 0) {
-        return res.status(400).json({ message: 'Yeterli kelime bulunamadı. Lütfen daha sonra tekrar deneyiniz.' });
+        return res.status(400).json({ message: 'Yeterli kelime bulunamadı' });
       }
 
       const selectedWords = [];
       for (let i = 0; i < totalWordsNeeded; i++) {
-        const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
-        selectedWords.push(randomWord);
+        selectedWords.push(allWords[Math.floor(Math.random() * allWords.length)]);
       }
-      console.log('📚 Selected words count:', selectedWords.length);
       
       const formatWord = (w) => {
         let meaningToShow = w.meaning;
-        const useWrongMeaning = Math.random() < 0.5;
-        
-        if (useWrongMeaning && allWords.length > 1) {
+        if (Math.random() < 0.5 && allWords.length > 1) {
           const wrongWord = allWords[Math.floor(Math.random() * allWords.length)];
           if (wrongWord._id.toString() !== w._id.toString()) {
             meaningToShow = wrongWord.meaning;
@@ -339,45 +327,24 @@ router.post('/session/:sessionId/start', async (req, res) => {
       };
       
       session.words = selectedWords.map(formatWord);
-      
-      if (isMultiplayer) {
-        session.playerQuestionMapping = [
-          {
-            studentId: session.playerStudentIds[0],
-            questionIndices: Array.from({length: wordsPerPlayer}, (_, i) => i)
-          },
-          {
-            studentId: session.playerStudentIds[1],
-            questionIndices: Array.from({length: wordsPerPlayer}, (_, i) => i + wordsPerPlayer)
-          }
-        ];
-      }
+      session.markModified('words');
     }
 
-    session.language = language;
-    
     if (session.status === 'waiting') {
       session.status = 'active';
       session.startedAt = new Date();
     }
 
+    session.language = language;
     await session.save();
 
-    let wordsToReturn = session.words || [];
-    let playerQuestionMapping = session.playerQuestionMapping || [];
+    const freshSession = await GameSession.findById(sessionId);
     
-    console.log('📚 Response için hazırlanıyor:', {
-      totalWords: wordsToReturn.length,
-      isMultiplayer,
-      mappingCount: playerQuestionMapping.length
-    });
-
     res.json({
       success: true,
       message: 'Oyun başlatıldı',
-      session,
-      words: wordsToReturn,
-      playerQuestionMapping: playerQuestionMapping
+      session: freshSession,
+      words: freshSession.words || []
     });
   } catch (error) {
     console.error('❌ Oyun başlatma hatası:', error);
@@ -439,6 +406,7 @@ router.post('/session/:sessionId/answer', async (req, res) => {
 
       playerScore.totalAnswered = (playerScore.totalAnswered || 0) + 1;
       session.words = words;
+      session.markModified('words');
     }
 
     const wasPlayer2 = session.currentPlayerIndex === 1;
@@ -448,9 +416,7 @@ router.post('/session/:sessionId/answer', async (req, res) => {
       session.currentWordIndex++;
     }
 
-    // Oyun bitiş kontrolü - eğer tüm kelimeler bittiyse
     if (session.currentWordIndex >= session.words.length) {
-        // Oyunu otomatik tamamla
         session.status = 'completed';
         session.completedAt = new Date();
         session.duration = Math.floor((session.completedAt - session.startedAt) / 1000);
@@ -462,7 +428,6 @@ router.post('/session/:sessionId/answer', async (req, res) => {
 
         session.totalPoints = session.playerScores.reduce((sum, ps) => sum + ps.score, 0);
         
-        // Puanları dağıt
         for (let playerScore of session.playerScores) {
           const user = await User.findById(playerScore.playerId);
           if (user) {
