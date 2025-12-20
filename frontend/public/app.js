@@ -4247,24 +4247,35 @@ function initMultiplayerGame() {
         clearInterval(multiplayerState.timerInterval);
     }
 
-    const isGameAlreadyStarted = window.currentGameSession && window.currentGameSession.status === 'active';
-    if (isGameAlreadyStarted) {
-        console.log('🎮 Oyun zaten başlamış, direkt başlatılıyor');
+    console.log('🎮 initMultiplayerGame - Session status:', window.currentGameSession.status);
+    
+    if (window.currentGameSession.status === 'active') {
+        console.log('🎮 Oyun zaten aktif, direkt başlatılıyor');
+        multiplayerState.currentWordIndex = 0;
+        multiplayerState.currentPlayerIndex = 0;
         startSyncingGameState();
         displayNextQuestion();
-    } else {
-        console.log('⏳ Oyun henüz başlamadı, opponent bekleniyor');
+        startQuestionTimer();
+    } else if (window.currentGameSession.status === 'waiting') {
+        console.log('⏳ Oyun waiting status\'unda, opponent bekleniyor');
         showWaitingForOpponent();
+        checkGameInvitationAcceptance(null, window.gameSessionId);
+    } else {
+        console.log('❌ Unknown status:', window.currentGameSession.status);
     }
 }
 
 function displayNextQuestion() {
     const board = document.getElementById('multiplayerBoard');
     
-    if (multiplayerState.currentWordIndex >= multiplayerState.words.length) {
+    const actualWordIndex = multiplayerState.currentWordIndex;
+    
+    if (actualWordIndex >= multiplayerState.words.length) {
         endMultiplayerGame();
         return;
     }
+
+    multiplayerState.actualWordIndex = actualWordIndex;
 
     if (multiplayerState.timerInterval) {
         clearInterval(multiplayerState.timerInterval);
@@ -4272,7 +4283,7 @@ function displayNextQuestion() {
     
     multiplayerState.timeLeft = 15;
 
-    const currentWord = multiplayerState.words[multiplayerState.currentWordIndex];
+    const currentWord = multiplayerState.words[actualWordIndex];
     const currentPlayer = multiplayerState.playerScores[multiplayerState.currentPlayerIndex];
     const otherPlayer = multiplayerState.playerScores[1 - multiplayerState.currentPlayerIndex];
     
@@ -4356,7 +4367,7 @@ async function submitAnswer(isCorrect, isTimeout = false) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 studentId: currentUser.studentId,
-                wordIndex: multiplayerState.currentWordIndex,
+                wordIndex: multiplayerState.actualWordIndex,
                 answer: isCorrect,
                 isTimeout: isTimeout,
                 currentPlayerIndex: multiplayerState.currentPlayerIndex
